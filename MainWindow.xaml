@@ -1,0 +1,381 @@
+﻿<Window x:Class="ReminderApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Reminder App"
+        Height="560"
+        Width="840"
+        Icon="Assets/appicon.ico">
+
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="230" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Sol: Calendar -->
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="Calendar"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8" />
+            <Calendar x:Name="CalendarControl"
+                      SelectedDatesChanged="CalendarControl_SelectedDatesChanged" />
+        </StackPanel>
+
+        <!-- Sağ: TabControl -->
+        <TabControl Grid.Column="1"
+                    Margin="10,0,0,0">
+
+            <!-- REMINDERS TAB -->
+            <TabItem Header="Reminders">
+                <DockPanel>
+                    <!-- Üst bar: tarih + butonlar -->
+                    <StackPanel DockPanel.Dock="Top"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <TextBlock x:Name="DateTitle"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    Margin="20,0,0,0">
+                            <Button Content="Add"
+                                    Width="60"
+                                    Margin="0,0,6,0"
+                                    Click="AddReminder_Click" />
+                            <Button Content="Edit"
+                                    Width="60"
+                                    Margin="0,0,6,0"
+                                    Click="EditReminder_Click" />
+                            <Button Content="Delete"
+                                    Width="60"
+                                    Click="DeleteReminder_Click" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Hatırlatıcı listesi -->
+                    <ListBox x:Name="RemindersListBox">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,0,0,1"
+                                        BorderBrush="LightGray"
+                                        Padding="4">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontWeight="Bold" />
+                                        <TextBlock Text="{Binding ScheduledTime, StringFormat='{}{0:HH:mm}'}"
+                                                   Foreground="Gray"
+                                                   FontSize="11" />
+                                        <TextBlock Text="{Binding Message}"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="12" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </TabItem>
+
+            <!-- WATER TAB -->
+            <TabItem Header="Water">
+                <Grid Margin="0,4,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <!-- goal + save -->
+                        <RowDefinition Height="Auto" />
+                        <!-- reminder interval -->
+                        <RowDefinition Height="Auto" />
+                        <!-- day window + end today -->
+                        <RowDefinition Height="Auto" />
+                        <!-- summary -->
+                        <RowDefinition Height="Auto" />
+                        <!-- buttons -->
+                        <RowDefinition Height="*" />
+                        <!-- entries -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Daily goal + save -->
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <TextBlock Text="Daily Goal (ml):"
+                                   VerticalAlignment="Center" />
+                        <TextBox x:Name="WaterGoalBox"
+                                 Width="80"
+                                 Margin="6,0,0,0"
+                                 VerticalAlignment="Center" />
+                        <Button Content="Save Settings"
+                                Margin="8,0,0,0"
+                                Click="SaveWaterSettings_Click" />
+                    </StackPanel>
+
+                    <!-- Water reminder settings -->
+                    <StackPanel Grid.Row="1"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <CheckBox x:Name="WaterReminderEnabledCheckBox"
+                                  Content="Enable water reminders"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="every"
+                                   Margin="10,0,4,0"
+                                   VerticalAlignment="Center" />
+                        <TextBox x:Name="WaterReminderIntervalBox"
+                                 Width="50"
+                                 VerticalAlignment="Center" />
+                        <ComboBox x:Name="WaterReminderUnitBox"
+                                  Width="90"
+                                  Margin="4,0,0,0"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="Minutes" />
+                            <ComboBoxItem Content="Hours" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Day window + End today -->
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <TextBlock Text="Day window:"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text=" Start (HH:mm):"
+                                   Margin="8,0,2,0"
+                                   VerticalAlignment="Center" />
+                        <TextBox x:Name="WaterDayStartBox"
+                                 Width="70"
+                                 VerticalAlignment="Center" />
+                        <TextBlock Text=" End (HH:mm):"
+                                   Margin="8,0,2,0"
+                                   VerticalAlignment="Center" />
+                        <TextBox x:Name="WaterDayEndBox"
+                                 Width="70"
+                                 VerticalAlignment="Center" />
+
+                        <Button Content="End today"
+                                Margin="12,0,0,0"
+                                Click="EndWaterDay_Click" />
+                    </StackPanel>
+
+                    <!-- Summary -->
+                    <TextBlock Grid.Row="3"
+                               x:Name="WaterSummaryText"
+                               Margin="0,0,0,8"
+                               FontSize="13"
+                               TextWrapping="Wrap" />
+
+                    <!-- Quick add buttons -->
+                    <StackPanel Grid.Row="4"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <TextBlock Text="Add:"
+                                   VerticalAlignment="Center" />
+                        <Button Content="+100 ml"
+                                Width="70"
+                                Margin="6,0,0,0"
+                                Click="AddWater100_Click" />
+                        <Button Content="+200 ml"
+                                Width="70"
+                                Margin="6,0,0,0"
+                                Click="AddWater200_Click" />
+                        <Button Content="+300 ml"
+                                Width="70"
+                                Margin="6,0,0,0"
+                                Click="AddWater300_Click" />
+
+                        <TextBox x:Name="CustomWaterBox"
+                                 Width="60"
+                                 Margin="12,0,0,0"
+                                 VerticalAlignment="Center"
+                                 ToolTip="Custom ml" />
+                        <Button Content="Add Custom"
+                                Margin="6,0,0,0"
+                                Click="AddWaterCustom_Click" />
+
+                        <Button Content="Delete Selected"
+                                Margin="12,0,0,0"
+                                Click="DeleteWaterEntry_Click" />
+                    </StackPanel>
+
+                    <!-- Entries list -->
+                    <ListBox Grid.Row="5"
+                             x:Name="WaterEntriesListBox">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,0,0,1"
+                                        BorderBrush="LightGray"
+                                        Padding="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm}'}"
+                                                   Width="60" />
+                                        <TextBlock Text="{Binding AmountMl, StringFormat='{}{0} ml'}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </TabItem>
+
+            <!-- NOTIFICATIONS TAB -->
+            <TabItem Header="Notifications">
+                <ScrollViewer Margin="0,4,0,0">
+                    <StackPanel>
+
+                        <!-- Reminder popup settings -->
+                        <GroupBox Header="Reminder notification"
+                                  Margin="0,0,0,10">
+                            <Grid Margin="6">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Size -->
+                                <StackPanel Grid.Row="0"
+                                            Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Margin="0,0,0,4">
+                                    <TextBlock Text="Width:"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="ReminderPopupWidthBox"
+                                             Width="70"
+                                             Margin="4,0,0,0" />
+                                    <TextBlock Text="Height:"
+                                               Margin="10,0,0,0"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="ReminderPopupHeightBox"
+                                             Width="70"
+                                             Margin="4,0,0,0" />
+                                </StackPanel>
+
+                                <!-- Position -->
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Margin="0,0,0,4">
+                                    <TextBlock Text="Position:"
+                                               VerticalAlignment="Center" />
+                                    <ComboBox x:Name="ReminderPositionBox"
+                                              Width="140"
+                                              Margin="6,0,0,0">
+                                        <ComboBoxItem Content="TopLeft" />
+                                        <ComboBoxItem Content="TopRight" />
+                                        <ComboBoxItem Content="BottomLeft" />
+                                        <ComboBoxItem Content="BottomRight" />
+                                        <ComboBoxItem Content="Center" />
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- Sound -->
+                                <CheckBox Grid.Row="2"
+                                          Grid.Column="0"
+                                          x:Name="ReminderPlaySoundCheckBox"
+                                          Content="Play sound"
+                                          Margin="0,2,0,0" />
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Water popup settings -->
+                        <GroupBox Header="Water notification"
+                                  Margin="0,0,0,10">
+                            <Grid Margin="6">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Size -->
+                                <StackPanel Grid.Row="0"
+                                            Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Margin="0,0,0,4">
+                                    <TextBlock Text="Width:"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="WaterPopupWidthBox"
+                                             Width="70"
+                                             Margin="4,0,0,0" />
+                                    <TextBlock Text="Height:"
+                                               Margin="10,0,0,0"
+                                               VerticalAlignment="Center" />
+                                    <TextBox x:Name="WaterPopupHeightBox"
+                                             Width="70"
+                                             Margin="4,0,0,0" />
+                                </StackPanel>
+
+                                <!-- Position -->
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Margin="0,0,0,4">
+                                    <TextBlock Text="Position:"
+                                               VerticalAlignment="Center" />
+                                    <ComboBox x:Name="WaterPositionBox"
+                                              Width="140"
+                                              Margin="6,0,0,0">
+                                        <ComboBoxItem Content="TopLeft" />
+                                        <ComboBoxItem Content="TopRight" />
+                                        <ComboBoxItem Content="BottomLeft" />
+                                        <ComboBoxItem Content="BottomRight" />
+                                        <ComboBoxItem Content="Center" />
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- Sound -->
+                                <CheckBox Grid.Row="2"
+                                          Grid.Column="0"
+                                          x:Name="WaterPlaySoundCheckBox"
+                                          Content="Play sound"
+                                          Margin="0,2,0,0" />
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Save + Test buttons -->
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,4,0,0">
+                            <Button Content="Save Notification Settings"
+                                    Width="190"
+                                    Margin="0,0,10,0"
+                                    Click="SaveNotificationSettings_Click" />
+
+                            <Button Content="Test Reminder Notification"
+                                    Width="180"
+                                    Margin="0,0,8,0"
+                                    Click="TestReminderNotification_Click" />
+
+                            <Button Content="Test Water Notification"
+                                    Width="170"
+                                    Click="TestWaterNotification_Click" />
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Alt satır: status -->
+        <TextBlock Grid.Row="1"
+                   Grid.ColumnSpan="2"
+                   x:Name="StatusText"
+                   Margin="0,8,0,0"
+                   Foreground="Gray"
+                   FontSize="11" />
+    </Grid>
+</Window>

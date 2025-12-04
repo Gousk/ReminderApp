@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+
+		<!-- Çakışmaları engellemek için implicit usings kapalı -->
+		<ImplicitUsings>disable</ImplicitUsings>
+
+		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="Assets\appicon.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="Assets\appicon.ico">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<!-- HATALI System_Windows_Forms COMReference BLOĞUNU SİLİYORUZ -->
+
+	<ItemGroup>
+		<PackageReference Include="System.Text.Json" Version="10.0.0" />
+	</ItemGroup>
+
+</Project>
