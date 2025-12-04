@@ -19,6 +19,7 @@ namespace ReminderApp
         private readonly ReminderScheduler _scheduler;
         private readonly WaterRepository _waterRepository;
         private readonly WaterReminderService _waterReminderService;
+        private bool _waterSettingsInitialized = false;
 
         // System tray (nullable yaptık, sonra null-check ile kullanacağız)
         private WinForms.NotifyIcon? _trayIcon;
@@ -69,6 +70,7 @@ namespace ReminderApp
             WaterDayEndBox.Text = end.ToString(@"hh\:mm");
 
             _waterReminderService.ApplySettings(enabled, TimeSpan.FromMinutes(intervalMinutes), start, end);
+            _waterSettingsInitialized = true;
 
             // --- Notification settings UI'ı doldur ---
             LoadNotificationSettingsIntoUI();
@@ -287,6 +289,52 @@ namespace ReminderApp
 
             WaterSummaryText.Text =
                 $"Date: {date:d} | Total: {total} ml / Goal: {goal} ml ({percent}%)";
+        }
+
+        private void WaterReminderSettingChanged(object sender, RoutedEventArgs e)
+        {
+            ApplyWaterReminderSettingsImmediate();
+        }
+
+        private void WaterReminderIntervalBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            ApplyWaterReminderSettingsImmediate();
+        }
+
+        private void ApplyWaterReminderSettingsImmediate()
+        {
+            if (!_waterSettingsInitialized)
+                return;
+
+            bool enabled = WaterReminderEnabledCheckBox.IsChecked == true;
+
+            if (!int.TryParse(WaterReminderIntervalBox.Text, out var intervalValue) || intervalValue <= 0)
+                return;
+
+            int intervalMinutes = intervalValue;
+            if (WaterReminderUnitBox.SelectedItem is ComboBoxItem item &&
+                (item.Content as string) == "Hours")
+            {
+                intervalMinutes = intervalValue * 60;
+            }
+
+            if (intervalMinutes <= 0)
+                intervalMinutes = 60;
+
+            _waterRepository.SetReminderSettings(enabled, intervalMinutes);
+
+            if (!TimeSpan.TryParse(WaterDayStartBox.Text, out var startTime) ||
+                !TimeSpan.TryParse(WaterDayEndBox.Text, out var endTime))
+            {
+                var window = _waterRepository.GetDayWindowSettings();
+                startTime = window.start;
+                endTime = window.end;
+            }
+
+            _waterReminderService.ApplySettings(enabled, TimeSpan.FromMinutes(intervalMinutes), startTime, endTime);
+
+            StatusText.Text =
+                $"Water reminders {(enabled ? "enabled" : "disabled")}, interval {intervalMinutes} minutes.";
         }
 
         private void SaveWaterSettings_Click(object sender, RoutedEventArgs e)
