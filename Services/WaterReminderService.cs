@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Windows.Threading;
+using System.Timers;
 using ReminderApp.Models;
 
 namespace ReminderApp.Services
@@ -9,7 +9,8 @@ namespace ReminderApp.Services
     {
         private readonly WaterRepository _waterRepository;
         private readonly NotificationService _notificationService;
-        private readonly DispatcherTimer _timer;
+        private readonly Timer _timer;
+        private bool _isTickRunning;
 
         private bool _enabled;
         private TimeSpan _interval;
@@ -26,11 +27,14 @@ namespace ReminderApp.Services
 
             _manualEndUntil = _waterRepository.GetManualEndUntil();
 
-            _timer = new DispatcherTimer
+            _timer = new Timer
             {
-                Interval = TimeSpan.FromSeconds(1)
+                Interval = 1000,
+                AutoReset = true,
+                Enabled = true
             };
-            _timer.Tick += TimerOnTick;
+
+            _timer.Elapsed += TimerOnTick;
             _timer.Start();
         }
 
@@ -75,8 +79,16 @@ namespace ReminderApp.Services
 
         private void TimerOnTick(object? sender, EventArgs e)
         {
-            if (!_enabled || _interval <= TimeSpan.Zero)
+            if (_isTickRunning)
                 return;
+
+            _isTickRunning = true;
+
+            if (!_enabled || _interval <= TimeSpan.Zero)
+            {
+                _isTickRunning = false;
+                return;
+            }
 
             var now = DateTime.Now;
 
@@ -84,7 +96,10 @@ namespace ReminderApp.Services
             if (_manualEndUntil.HasValue)
             {
                 if (now < _manualEndUntil.Value)
+                {
+                    _isTickRunning = false;
                     return;
+                }
 
                 // Süre doldu, ertesi gün başladı → tekrar normal çalışmaya dönebiliriz.
                 _manualEndUntil = null;
@@ -105,6 +120,7 @@ namespace ReminderApp.Services
                 {
                     _nextTriggerTime = DateTime.MaxValue;
                 }
+                _isTickRunning = false;
                 return;
             }
 
@@ -119,6 +135,8 @@ namespace ReminderApp.Services
                 TriggerWaterReminder(now, dayStart, dayEnd);
                 _nextTriggerTime = now.Add(_interval);
             }
+
+            _isTickRunning = false;
         }
 
         /// <summary>
