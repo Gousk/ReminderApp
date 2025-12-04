@@ -1,12 +1,34 @@
 ﻿<Window x:Class="ReminderApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Reminder App"
+        Title="Reminder Console"
         Height="560"
-        Width="840"
+        Width="860"
         Icon="Assets/appicon.ico">
 
-    <Grid Margin="10">
+    <Grid Margin="14">
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#0B1216" Offset="0" />
+                <GradientStop Color="#05080A" Offset="1" />
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <Rectangle Fill="#101A1F"
+                   Stroke="{StaticResource BorderBrushStrong}"
+                   StrokeThickness="1.2"
+                   RadiusX="8"
+                   RadiusY="8"
+                   Margin="0" />
+
+        <Rectangle Fill="#061010"
+                   Opacity="0.3"
+                   RenderTransformOrigin="0.5,0.5">
+            <Rectangle.RenderTransform>
+                <RotateTransform Angle="-2" />
+            </Rectangle.RenderTransform>
+        </Rectangle>
+
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="230" />
             <ColumnDefinition Width="*" />
@@ -18,22 +40,38 @@
         </Grid.RowDefinitions>
 
         <!-- Sol: Calendar -->
-        <StackPanel Grid.Column="0">
-            <TextBlock Text="Calendar"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Margin="0,0,0,8" />
-            <Calendar x:Name="CalendarControl"
-                      SelectedDatesChanged="CalendarControl_SelectedDatesChanged" />
-        </StackPanel>
+        <Border Grid.Column="0"
+                Margin="0,0,10,0"
+                Background="#0E181D"
+                Padding="10"
+                BorderBrush="{StaticResource BorderBrushStrong}"
+                BorderThickness="1.2"
+                CornerRadius="8">
+            <StackPanel>
+                <TextBlock Text="CALENDAR"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource AccentBrush}"
+                           Margin="0,0,0,8" />
+                <Calendar x:Name="CalendarControl"
+                          SelectedDatesChanged="CalendarControl_SelectedDatesChanged" />
+            </StackPanel>
+        </Border>
 
         <!-- Sağ: TabControl -->
         <TabControl Grid.Column="1"
-                    Margin="10,0,0,0">
+                    Margin="0">
 
             <!-- REMINDERS TAB -->
             <TabItem Header="Reminders">
-                <DockPanel>
+                <DockPanel Background="#0D161A" Margin="4" Padding="8" SnapsToDevicePixels="True" >
+                    <DockPanel.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#12362E" Offset="0" />
+                            <GradientStop Color="#1E5A42" Offset="1" />
+                        </LinearGradientBrush>
+                    </DockPanel.BorderBrush>
+                    <DockPanel.BorderThickness>1</DockPanel.BorderThickness>
                     <!-- Üst bar: tarih + butonlar -->
                     <StackPanel DockPanel.Dock="Top"
                                 Orientation="Horizontal"
@@ -41,6 +79,7 @@
                         <TextBlock x:Name="DateTitle"
                                    FontSize="16"
                                    FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}"
                                    VerticalAlignment="Center" />
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Right"
@@ -60,17 +99,19 @@
                     </StackPanel>
 
                     <!-- Hatırlatıcı listesi -->
-                    <ListBox x:Name="RemindersListBox">
+                    <ListBox x:Name="RemindersListBox"
+                             Margin="0,6,0,0">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border BorderThickness="0,0,0,1"
-                                        BorderBrush="LightGray"
+                                        BorderBrush="{StaticResource BorderBrushStrong}"
                                         Padding="4">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Title}"
-                                                   FontWeight="Bold" />
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}" />
                                         <TextBlock Text="{Binding ScheduledTime, StringFormat='{}{0:HH:mm}'}"
-                                                   Foreground="Gray"
+                                                   Foreground="{StaticResource TextSecondary}"
                                                    FontSize="11" />
                                         <TextBlock Text="{Binding Message}"
                                                    TextWrapping="Wrap"
@@ -85,7 +126,12 @@
 
             <!-- WATER TAB -->
             <TabItem Header="Water">
-                <Grid Margin="0,4,0,0">
+                <Grid Margin="4"
+                      Background="#0D161A"
+                      Padding="8"
+                      SnapsToDevicePixels="True"
+                      BorderBrush="{StaticResource BorderBrushStrong}"
+                      BorderThickness="1">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <!-- goal + save -->
@@ -106,7 +152,8 @@
                                 Orientation="Horizontal"
                                 Margin="0,0,0,8">
                         <TextBlock Text="Daily Goal (ml):"
-                                   VerticalAlignment="Center" />
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AccentBrush}" />
                         <TextBox x:Name="WaterGoalBox"
                                  Width="80"
                                  Margin="6,0,0,0"
@@ -147,7 +194,8 @@
                                 Orientation="Horizontal"
                                 Margin="0,0,0,8">
                         <TextBlock Text="Day window:"
-                                   VerticalAlignment="Center" />
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AccentBrush}" />
                         <TextBlock Text=" Start (HH:mm):"
                                    Margin="8,0,2,0"
                                    VerticalAlignment="Center" />
@@ -171,6 +219,7 @@
                                x:Name="WaterSummaryText"
                                Margin="0,0,0,8"
                                FontSize="13"
+                               Foreground="{StaticResource TextSecondary}"
                                TextWrapping="Wrap" />
 
                     <!-- Quick add buttons -->
@@ -178,7 +227,8 @@
                                 Orientation="Horizontal"
                                 Margin="0,0,0,8">
                         <TextBlock Text="Add:"
-                                   VerticalAlignment="Center" />
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AccentBrush}" />
                         <Button Content="+100 ml"
                                 Width="70"
                                 Margin="6,0,0,0"
@@ -212,11 +262,12 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border BorderThickness="0,0,0,1"
-                                        BorderBrush="LightGray"
+                                        BorderBrush="{StaticResource BorderBrushStrong}"
                                         Padding="4">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm}'}"
-                                                   Width="60" />
+                                                   Width="60"
+                                                   Foreground="{StaticResource TextSecondary}" />
                                         <TextBlock Text="{Binding AmountMl, StringFormat='{}{0} ml'}" />
                                     </StackPanel>
                                 </Border>
@@ -379,7 +430,7 @@
                    Grid.ColumnSpan="2"
                    x:Name="StatusText"
                    Margin="0,8,0,0"
-                   Foreground="Gray"
+                   Foreground="{StaticResource TextSecondary}"
                    FontSize="11" />
     </Grid>
 </Window>

@@ -10,32 +10,35 @@
         ShowInTaskbar="False"
         AllowsTransparency="True"
         Background="Transparent">
-    <Border CornerRadius="8"
-            Background="#FF103040"
-            Padding="10"
+    <Border CornerRadius="10"
+            Background="#0B141A"
+            Padding="12"
             Margin="8"
-            BorderBrush="#FF40A0FF"
-            BorderThickness="1">
+            BorderBrush="{StaticResource AccentBrush}"
+            BorderThickness="1.4">
+        <Border.Effect>
+            <DropShadowEffect Color="#182E28" BlurRadius="18" ShadowDepth="0" />
+        </Border.Effect>
         <StackPanel>
             <TextBlock Text="Time to drink water"
                        FontSize="16"
                        FontWeight="Bold"
-                       Foreground="White"
+                       Foreground="{StaticResource AccentBrush}"
                        TextWrapping="Wrap" />
 
             <TextBlock x:Name="MessageText"
-                       Margin="0,6,0,8"
-                       Foreground="White"
+                       Margin="0,6,0,10"
+                       Foreground="{StaticResource TextPrimary}"
                        TextWrapping="Wrap" />
 
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right">
                 <Button Content="Skip"
-                        Width="70"
+                        Width="80"
                         Margin="0,0,6,0"
                         Click="Skip_Click" />
                 <Button Content="I drank it"
-                        Width="90"
+                        Width="110"
                         Click="Confirm_Click" />
             </StackPanel>
         </StackPanel>

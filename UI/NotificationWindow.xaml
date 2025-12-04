@@ -10,30 +10,33 @@
         ShowInTaskbar="False"
         AllowsTransparency="True"
         Background="Transparent">
-    <Border CornerRadius="8"
-            Background="#FF103040"
-            Padding="10"
+    <Border CornerRadius="10"
+            Background="#0B141A"
+            Padding="12"
             Margin="8"
-            BorderBrush="#FF40A0FF"
-            BorderThickness="1">
+            BorderBrush="{StaticResource AccentBrush}"
+            BorderThickness="1.4">
+        <Border.Effect>
+            <DropShadowEffect Color="#182E28" BlurRadius="18" ShadowDepth="0" />
+        </Border.Effect>
         <StackPanel>
             <TextBlock x:Name="TitleText"
                        FontSize="16"
                        FontWeight="Bold"
-                       Foreground="White"
+                       Foreground="{StaticResource AccentBrush}"
                        TextWrapping="Wrap" />
             <TextBlock x:Name="TimeText"
-                       Foreground="LightGray"
+                       Foreground="{StaticResource TextSecondary}"
                        FontSize="11"
                        Margin="0,4,0,0" />
             <TextBlock x:Name="MessageText"
-                       Margin="0,6,0,8"
-                       Foreground="White"
+                       Margin="0,6,0,10"
+                       Foreground="{StaticResource TextPrimary}"
                        TextWrapping="Wrap" />
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right">
                 <Button Content="Close"
-                        Width="70"
+                        Width="80"
                         Click="Close_Click" />
             </StackPanel>
         </StackPanel>

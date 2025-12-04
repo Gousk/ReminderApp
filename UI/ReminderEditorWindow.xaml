@@ -2,142 +2,153 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Reminder"
-        Height="380"
-        Width="420"
+        Height="400"
+        Width="460"
         WindowStartupLocation="CenterOwner">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <!-- title -->
-            <RowDefinition Height="Auto" />
-            <!-- message -->
-            <RowDefinition Height="Auto" />
-            <!-- date -->
-            <RowDefinition Height="Auto" />
-            <!-- time -->
-            <RowDefinition Height="Auto" />
-            <!-- minutes before -->
-            <RowDefinition Height="Auto" />
-            <!-- repeat -->
-            <RowDefinition Height="Auto" />
-            <!-- level + play sound -->
-            <RowDefinition Height="Auto" />
-            <!-- sound path -->
-            <RowDefinition Height="*" />
-            <!-- spacer -->
-            <RowDefinition Height="Auto" />
-            <!-- buttons -->
-        </Grid.RowDefinitions>
+    <Border Margin="12"
+            Padding="12"
+            Background="#0D161A"
+            BorderBrush="{StaticResource BorderBrushStrong}"
+            BorderThickness="1.4"
+            CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!-- title -->
+                <RowDefinition Height="Auto" />
+                <!-- message -->
+                <RowDefinition Height="Auto" />
+                <!-- date -->
+                <RowDefinition Height="Auto" />
+                <!-- time -->
+                <RowDefinition Height="Auto" />
+                <!-- minutes before -->
+                <RowDefinition Height="Auto" />
+                <!-- repeat -->
+                <RowDefinition Height="Auto" />
+                <!-- level + play sound -->
+                <RowDefinition Height="Auto" />
+                <!-- sound path -->
+                <RowDefinition Height="*" />
+                <!-- spacer -->
+                <RowDefinition Height="Auto" />
+                <!-- buttons -->
+            </Grid.RowDefinitions>
 
-        <!-- Title -->
-        <TextBlock Text="Title:" Grid.Row="0" VerticalAlignment="Center" />
-        <TextBox x:Name="TitleBox"
-                 Grid.Row="0"
-                 Margin="80,0,0,0" />
+            <!-- Title -->
+            <TextBlock Text="TITLE:" Grid.Row="0" VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+            <TextBox x:Name="TitleBox"
+                     Grid.Row="0"
+                     Margin="120,0,0,0"
+                     MinWidth="240" />
 
-        <!-- Message -->
-        <TextBlock Text="Message:" Grid.Row="1" Margin="0,8,0,0" VerticalAlignment="Top" />
-        <TextBox x:Name="MessageTextBox"
-                 Grid.Row="1"
-                 Margin="80,8,0,0"
-                 AcceptsReturn="True"
-                 Height="60"
-                 TextWrapping="Wrap" />
+            <!-- Message -->
+            <TextBlock Text="MESSAGE:" Grid.Row="1" Margin="0,8,0,0" VerticalAlignment="Top" Foreground="{StaticResource AccentBrush}" />
+            <TextBox x:Name="MessageTextBox"
+                     Grid.Row="1"
+                     Margin="120,8,0,0"
+                     AcceptsReturn="True"
+                     Height="70"
+                     TextWrapping="Wrap" />
 
-        <!-- Date -->
-        <TextBlock Text="Date:" Grid.Row="2" Margin="0,8,0,0" VerticalAlignment="Center" />
-        <DatePicker x:Name="DatePicker"
-                    Grid.Row="2"
-                    Margin="80,8,0,0"
-                    SelectedDate="{x:Null}" />
+            <!-- Date -->
+            <TextBlock Text="DATE:" Grid.Row="2" Margin="0,8,0,0" VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+            <DatePicker x:Name="DatePicker"
+                        Grid.Row="2"
+                        Margin="120,8,0,0"
+                        SelectedDate="{x:Null}" />
 
-        <!-- Time -->
-        <TextBlock Text="Time (HH:mm):"
-                   Grid.Row="3"
-                   Margin="0,8,0,0"
-                   VerticalAlignment="Center" />
-        <TextBox x:Name="TimeBox"
-                 Grid.Row="3"
-                 Margin="120,8,0,0"
-                 Width="80" />
+            <!-- Time -->
+            <TextBlock Text="TIME (HH:mm):"
+                       Grid.Row="3"
+                       Margin="0,8,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource AccentBrush}" />
+            <TextBox x:Name="TimeBox"
+                     Grid.Row="3"
+                     Margin="140,8,0,0"
+                     Width="90" />
 
-        <!-- Minutes before -->
-        <TextBlock Text="Remind before (min):"
-                   Grid.Row="4"
-                   Margin="0,8,0,0"
-                   VerticalAlignment="Center" />
-        <TextBox x:Name="MinutesBeforeBox"
-                 Grid.Row="4"
-                 Margin="150,8,0,0"
-                 Width="60" />
+            <!-- Minutes before -->
+            <TextBlock Text="REMIND BEFORE (MIN):"
+                       Grid.Row="4"
+                       Margin="0,8,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource AccentBrush}" />
+            <TextBox x:Name="MinutesBeforeBox"
+                     Grid.Row="4"
+                     Margin="190,8,0,0"
+                     Width="70" />
 
-        <!-- Repeat -->
-        <StackPanel Grid.Row="5"
-                    Orientation="Horizontal"
-                    Margin="0,8,0,0">
-            <CheckBox x:Name="RepeatCheckBox"
-                      Content="Repeat"
-                      VerticalAlignment="Center" />
-            <TextBlock Text="every"
-                       Margin="10,0,4,0"
-                       VerticalAlignment="Center" />
-            <TextBox x:Name="RepeatIntervalBox"
-                     Width="50"
-                     VerticalAlignment="Center" />
-            <ComboBox x:Name="RepeatUnitBox"
-                      Width="90"
-                      Margin="4,0,0,0"
-                      SelectedIndex="2">
-                <ComboBoxItem Content="Minutes" />
-                <ComboBoxItem Content="Hours" />
-                <ComboBoxItem Content="Days" />
-            </ComboBox>
-        </StackPanel>
+            <!-- Repeat -->
+            <StackPanel Grid.Row="5"
+                        Orientation="Horizontal"
+                        Margin="0,8,0,0">
+                <CheckBox x:Name="RepeatCheckBox"
+                          Content="Repeat"
+                          VerticalAlignment="Center" />
+                <TextBlock Text="every"
+                           Margin="10,0,4,0"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="RepeatIntervalBox"
+                         Width="50"
+                         VerticalAlignment="Center" />
+                <ComboBox x:Name="RepeatUnitBox"
+                          Width="90"
+                          Margin="4,0,0,0"
+                          SelectedIndex="2">
+                    <ComboBoxItem Content="Minutes" />
+                    <ComboBoxItem Content="Hours" />
+                    <ComboBoxItem Content="Days" />
+                </ComboBox>
+            </StackPanel>
 
-        <!-- Level + play sound -->
-        <StackPanel Grid.Row="6"
-                    Orientation="Horizontal"
-                    Margin="0,8,0,0">
-            <TextBlock Text="Level:"
-                       VerticalAlignment="Center" />
-            <ComboBox x:Name="LevelBox"
-                      Width="110"
-                      Margin="6,0,20,0"
-                      SelectedIndex="0">
-                <ComboBoxItem Content="Normal" />
-                <ComboBoxItem Content="Important" />
-                <ComboBoxItem Content="Critical" />
-            </ComboBox>
+            <!-- Level + play sound -->
+            <StackPanel Grid.Row="6"
+                        Orientation="Horizontal"
+                        Margin="0,8,0,0">
+                <TextBlock Text="LEVEL:"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource AccentBrush}" />
+                <ComboBox x:Name="LevelBox"
+                          Width="120"
+                          Margin="6,0,20,0"
+                          SelectedIndex="0">
+                    <ComboBoxItem Content="Normal" />
+                    <ComboBoxItem Content="Important" />
+                    <ComboBoxItem Content="Critical" />
+                </ComboBox>
 
-            <CheckBox x:Name="PlaySoundCheckBox"
-                      Content="Play sound"
-                      IsChecked="True"
-                      VerticalAlignment="Center" />
-            <Button Content="Choose sound..."
-                    Margin="10,0,0,0"
-                    Click="ChooseSound_Click" />
-        </StackPanel>
+                <CheckBox x:Name="PlaySoundCheckBox"
+                          Content="Play sound"
+                          IsChecked="True"
+                          VerticalAlignment="Center" />
+                <Button Content="Choose sound..."
+                        Margin="10,0,0,0"
+                        Click="ChooseSound_Click" />
+            </StackPanel>
 
-        <!-- Sound path display -->
-        <TextBlock x:Name="SoundPathText"
-                   Grid.Row="7"
-                   Margin="0,4,0,0"
-                   TextWrapping="Wrap"
-                   Foreground="Gray"
-                   FontSize="11" />
+            <!-- Sound path display -->
+            <TextBlock x:Name="SoundPathText"
+                       Grid.Row="7"
+                       Margin="0,6,0,0"
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource TextSecondary}"
+                       FontSize="11" />
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="9"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="0,12,0,0">
-            <Button Content="Cancel"
-                    Width="70"
-                    Margin="0,0,8,0"
-                    Click="Cancel_Click" />
-            <Button Content="Save"
-                    Width="70"
-                    Click="Save_Click" />
-        </StackPanel>
-    </Grid>
+            <!-- Buttons -->
+            <StackPanel Grid.Row="9"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,14,0,0">
+                <Button Content="Cancel"
+                        Width="80"
+                        Margin="0,0,8,0"
+                        Click="Cancel_Click" />
+                <Button Content="Save"
+                        Width="80"
+                        Click="Save_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
 </Window>
