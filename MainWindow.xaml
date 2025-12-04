@@ -122,17 +122,21 @@
                                 Margin="0,0,0,8">
                         <CheckBox x:Name="WaterReminderEnabledCheckBox"
                                   Content="Enable water reminders"
-                                  VerticalAlignment="Center" />
+                                  VerticalAlignment="Center"
+                                  Checked="WaterReminderSettingChanged"
+                                  Unchecked="WaterReminderSettingChanged" />
                         <TextBlock Text="every"
                                    Margin="10,0,4,0"
                                    VerticalAlignment="Center" />
                         <TextBox x:Name="WaterReminderIntervalBox"
                                  Width="50"
-                                 VerticalAlignment="Center" />
+                                 VerticalAlignment="Center"
+                                 TextChanged="WaterReminderIntervalBox_TextChanged" />
                         <ComboBox x:Name="WaterReminderUnitBox"
                                   Width="90"
                                   Margin="4,0,0,0"
-                                  VerticalAlignment="Center">
+                                  VerticalAlignment="Center"
+                                  SelectionChanged="WaterReminderSettingChanged">
                             <ComboBoxItem Content="Minutes" />
                             <ComboBoxItem Content="Hours" />
                         </ComboBox>
