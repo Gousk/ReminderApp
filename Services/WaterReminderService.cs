@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Timers;
 using ReminderApp.Models;
 
@@ -10,7 +11,7 @@ namespace ReminderApp.Services
         private readonly WaterRepository _waterRepository;
         private readonly NotificationService _notificationService;
         private readonly Timer _timer;
-        private bool _isTickRunning;
+        private readonly object _lock = new();
 
         private bool _enabled;
         private TimeSpan _interval;
@@ -30,12 +31,12 @@ namespace ReminderApp.Services
             _timer = new Timer
             {
                 Interval = 1000,
-                AutoReset = true,
-                Enabled = true
+                AutoReset = false,
+                Enabled = false
             };
 
             _timer.Elapsed += TimerOnTick;
-            _timer.Start();
+            ScheduleNext(TimeSpan.Zero);
         }
 
         /// <summary>
@@ -55,6 +56,8 @@ namespace ReminderApp.Services
                 _nextTriggerTime = DateTime.Now.Add(_interval);
             else
                 _nextTriggerTime = DateTime.MaxValue;
+
+            RestartTimer();
         }
 
         /// <summary>
@@ -67,6 +70,8 @@ namespace ReminderApp.Services
             var nextStart = ComputeNextDayStart(now, _dayStart);
             _manualEndUntil = nextStart;
             _waterRepository.SetManualEndUntil(_manualEndUntil);
+
+            RestartTimer();
         }
 
         private DateTime ComputeNextDayStart(DateTime now, TimeSpan dayStart)
@@ -79,64 +84,69 @@ namespace ReminderApp.Services
 
         private void TimerOnTick(object? sender, EventArgs e)
         {
-            if (_isTickRunning)
-                return;
-
-            _isTickRunning = true;
-
-            if (!_enabled || _interval <= TimeSpan.Zero)
+            lock (_lock)
             {
-                _isTickRunning = false;
-                return;
-            }
+                // Timer tekrar tekrar AutoReset ile çalışmıyor; her callback sonunda yeniden ayarlıyoruz.
+                _timer.Enabled = false;
 
-            var now = DateTime.Now;
+                var now = DateTime.Now;
 
-            // Eğer "bugünlük suyu bitir" aktifse ve halen süresini doldurmadıysa, hiçbir şey yapma.
-            if (_manualEndUntil.HasValue)
-            {
-                if (now < _manualEndUntil.Value)
+                if (!_enabled || _interval <= TimeSpan.Zero)
                 {
-                    _isTickRunning = false;
+                    ScheduleNext(TimeSpan.FromSeconds(30));
                     return;
                 }
 
-                // Süre doldu, ertesi gün başladı → tekrar normal çalışmaya dönebiliriz.
-                _manualEndUntil = null;
-                _waterRepository.SetManualEndUntil(null);
-            }
-
-            var (dayStart, dayEnd, inWindow) = GetCurrentWaterDayRange(now);
-
-            if (!inWindow)
-            {
-                // Gün penceresi dışındaysak su hatırlatması yapmıyoruz.
-                // Eğer pencere henüz başlamadıysa first trigger'ı pencere başlangıcının sonrasına koyabiliriz.
-                if (now < dayStart)
+                // Eğer "bugünlük suyu bitir" aktifse ve halen süresini doldurmadıysa, hiçbir şey yapma.
+                if (_manualEndUntil.HasValue)
                 {
-                    _nextTriggerTime = dayStart.Add(_interval);
+                    if (now < _manualEndUntil.Value)
+                    {
+                        // Manuele kadar bekle, ardından normal akışa döneceğiz.
+                        var wait = _manualEndUntil.Value - now;
+                        ScheduleNext(ClampDelay(wait));
+                        return;
+                    }
+
+                    // Süre doldu, ertesi gün başladı → tekrar normal çalışmaya dönebiliriz.
+                    _manualEndUntil = null;
+                    _waterRepository.SetManualEndUntil(null);
                 }
-                else
+
+                var (dayStart, dayEnd, inWindow) = GetCurrentWaterDayRange(now);
+
+                if (!inWindow)
                 {
-                    _nextTriggerTime = DateTime.MaxValue;
+                    // Gün penceresi dışındaysak su hatırlatması yapmıyoruz.
+                    // Eğer pencere henüz başlamadıysa first trigger'ı pencere başlangıcının sonrasına koyabiliriz.
+                    if (now < dayStart)
+                    {
+                        _nextTriggerTime = dayStart.Add(_interval);
+                        ScheduleNext(ClampDelay(dayStart - now));
+                    }
+                    else
+                    {
+                        _nextTriggerTime = DateTime.MaxValue;
+                        ScheduleNext(TimeSpan.FromMinutes(5));
+                    }
+                    return;
                 }
-                _isTickRunning = false;
-                return;
-            }
 
-            // Pencerenin içindeyiz.
-            if (_nextTriggerTime == DateTime.MaxValue || _nextTriggerTime < now || _nextTriggerTime >= dayEnd)
-            {
-                _nextTriggerTime = now.Add(_interval);
-            }
+                // Pencerenin içindeyiz.
+                if (_nextTriggerTime == DateTime.MaxValue || _nextTriggerTime < now || _nextTriggerTime >= dayEnd)
+                {
+                    _nextTriggerTime = now.Add(_interval);
+                }
 
-            if (now >= _nextTriggerTime && now < dayEnd)
-            {
-                TriggerWaterReminder(now, dayStart, dayEnd);
-                _nextTriggerTime = now.Add(_interval);
-            }
+                if (now >= _nextTriggerTime && now < dayEnd)
+                {
+                    TriggerWaterReminder(now, dayStart, dayEnd);
+                    _nextTriggerTime = now.Add(_interval);
+                }
 
-            _isTickRunning = false;
+                var delay = _nextTriggerTime - DateTime.Now;
+                ScheduleNext(ClampDelay(delay));
+            }
         }
 
         /// <summary>
@@ -184,6 +194,31 @@ namespace ReminderApp.Services
         {
             if (value <= 0) return 0;
             return ((value + step - 1) / step) * step;
+        }
+
+        private void RestartTimer()
+        {
+            lock (_lock)
+            {
+                ScheduleNext(TimeSpan.Zero);
+            }
+        }
+
+        private void ScheduleNext(TimeSpan delay)
+        {
+            _timer.Interval = Math.Max(1, ClampDelay(delay).TotalMilliseconds);
+            _timer.Enabled = true;
+        }
+
+        private TimeSpan ClampDelay(TimeSpan delay)
+        {
+            if (delay < TimeSpan.FromSeconds(1))
+                return TimeSpan.FromSeconds(1);
+
+            if (delay > TimeSpan.FromHours(6))
+                return TimeSpan.FromHours(6);
+
+            return delay;
         }
 
         /// <summary>
