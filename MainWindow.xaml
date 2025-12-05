@@ -164,6 +164,9 @@
                         <Button Content="End today"
                                 Margin="12,0,0,0"
                                 Click="EndWaterDay_Click" />
+                        <Button Content="Reset day end"
+                                Margin="8,0,0,0"
+                                Click="ResetWaterDay_Click" />
                     </StackPanel>
 
                     <!-- Summary -->

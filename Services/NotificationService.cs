@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Media;
 using System.Threading.Tasks;
 using System.Windows;
@@ -81,14 +81,14 @@ namespace ReminderApp.Services
 
         // --- Water notifications ---
 
-        public void ShowWaterReminder(int amountMl, System.Action onConfirm)
+        public void ShowWaterReminder(int amountMl, int remainingMl, int goalMl, System.Action onConfirm, System.Action? onSkip)
         {
             var appSettings = _notificationSettingsRepository.Get();
             var popupSettings = appSettings.WaterPopup ?? new PopupSettings();
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var window = new WaterNotificationWindow(amountMl, onConfirm, popupSettings);
+                var window = new WaterNotificationWindow(amountMl, remainingMl, goalMl, onConfirm, onSkip, popupSettings);
                 window.Show();
             });
 

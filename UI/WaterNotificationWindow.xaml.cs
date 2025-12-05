@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using ReminderApp.Models;
 
 namespace ReminderApp.UI
@@ -6,15 +6,18 @@ namespace ReminderApp.UI
     public partial class WaterNotificationWindow : Window
     {
         private readonly System.Action _onConfirm;
+        private readonly System.Action? _onSkip;
         private readonly PopupSettings _popupSettings;
 
-        public WaterNotificationWindow(int amountMl, System.Action onConfirm, PopupSettings popupSettings)
+        public WaterNotificationWindow(int amountMl, int remainingMl, int goalMl, System.Action onConfirm, System.Action? onSkip, PopupSettings popupSettings)
         {
             InitializeComponent();
             _onConfirm = onConfirm;
+            _onSkip = onSkip;
             _popupSettings = popupSettings;
 
-            MessageText.Text = $"Please drink {amountMl} ml of water now.";
+            MessageText.Text = $"Drink {amountMl} ml of water.";
+            ProgressText.Text = $"Remaining today: {remainingMl} ml (goal {goalMl} ml).";
 
             Loaded += (_, _) =>
             {
@@ -73,6 +76,7 @@ namespace ReminderApp.UI
 
         private void Skip_Click(object sender, RoutedEventArgs e)
         {
+            _onSkip?.Invoke();
             Close();
         }
     }

@@ -1,42 +1,35 @@
-﻿<Window x:Class="ReminderApp.UI.WaterNotificationWindow"
+<Window x:Class="ReminderApp.UI.WaterNotificationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Water Reminder"
-        Height="160"
-        Width="320"
-        WindowStyle="None"
+        WindowStyle="ToolWindow"
         ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
         Topmost="True"
         ShowInTaskbar="False"
-        AllowsTransparency="True"
-        Background="Transparent">
-    <Border CornerRadius="8"
-            Background="#FF103040"
-            Padding="10"
-            Margin="8"
-            BorderBrush="#FF40A0FF"
-            BorderThickness="1">
+        WindowStartupLocation="Manual">
+    <Border Padding="16" Background="#FF0F172A">
         <StackPanel>
-            <TextBlock Text="Time to drink water"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="White"
-                       TextWrapping="Wrap" />
-
             <TextBlock x:Name="MessageText"
-                       Margin="0,6,0,8"
                        Foreground="White"
-                       TextWrapping="Wrap" />
-
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Right">
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap"/>
+            <TextBlock x:Name="ProgressText"
+                       Margin="0,6,0,10"
+                       Foreground="#FFCED5E0"
+                       FontSize="13"
+                       TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
                 <Button Content="Skip"
-                        Width="70"
+                        Width="80"
+                        Padding="6,4"
                         Margin="0,0,6,0"
-                        Click="Skip_Click" />
-                <Button Content="I drank it"
-                        Width="90"
-                        Click="Confirm_Click" />
+                        Click="Skip_Click"/>
+                <Button Content="Drink"
+                        Width="120"
+                        Padding="6,4"
+                        Click="Confirm_Click"/>
             </StackPanel>
         </StackPanel>
     </Border>
