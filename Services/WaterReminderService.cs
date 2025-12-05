@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows.Threading;
 using ReminderApp.Models;
@@ -9,60 +9,184 @@ namespace ReminderApp.Services
     {
         private readonly WaterRepository _waterRepository;
         private readonly NotificationService _notificationService;
-        private readonly DispatcherTimer _timer;
+
+        private readonly object _lock = new();
+        private readonly DispatcherTimer _tickTimer;
 
         private bool _enabled;
         private TimeSpan _interval;
         private TimeSpan _dayStart;
         private TimeSpan _dayEnd;
-
         private DateTime? _manualEndUntil;
-        private DateTime _nextTriggerTime = DateTime.MaxValue;
+        private DateTime? _nextReminderAt;
 
         public WaterReminderService(WaterRepository waterRepository, NotificationService notificationService)
         {
             _waterRepository = waterRepository;
             _notificationService = notificationService;
-
             _manualEndUntil = _waterRepository.GetManualEndUntil();
 
-            _timer = new DispatcherTimer
+            _tickTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
-                Interval = TimeSpan.FromSeconds(1)
+                Interval = TimeSpan.FromSeconds(30)
             };
-            _timer.Tick += TimerOnTick;
-            _timer.Start();
+            _tickTimer.Tick += (_, _) => Tick();
+            _tickTimer.Start();
         }
 
-        /// <summary>
-        /// Tüm ayarları dışarıdan güncelliyoruz:
-        /// - enabled: hatırlatma açık mı
-        /// - interval: kaç dakikada bir
-        /// - dayStart / dayEnd: gün penceresi (örn. 09:00–02:00)
-        /// </summary>
         public void ApplySettings(bool enabled, TimeSpan interval, TimeSpan dayStart, TimeSpan dayEnd)
         {
-            _enabled = enabled;
-            _interval = interval.TotalMinutes <= 0 ? TimeSpan.FromMinutes(60) : interval;
-            _dayStart = dayStart;
-            _dayEnd = dayEnd;
-
-            if (_enabled)
-                _nextTriggerTime = DateTime.Now.Add(_interval);
-            else
-                _nextTriggerTime = DateTime.MaxValue;
+            lock (_lock)
+            {
+                _enabled = enabled;
+                _interval = interval <= TimeSpan.Zero ? TimeSpan.FromMinutes(60) : interval;
+                _dayStart = dayStart;
+                _dayEnd = dayEnd;
+                _nextReminderAt = null;
+            }
         }
 
-        /// <summary>
-        /// "Bugünlük suyu bitir" butonu.
-        /// Bugünkü su günü biter, reminder'lar bir SONRAKİ gün başlangıcına kadar durur.
-        /// </summary>
         public void EndToday()
         {
-            var now = DateTime.Now;
-            var nextStart = ComputeNextDayStart(now, _dayStart);
-            _manualEndUntil = nextStart;
-            _waterRepository.SetManualEndUntil(_manualEndUntil);
+            lock (_lock)
+            {
+                var now = DateTime.Now;
+                var nextStart = ComputeNextDayStart(now, _dayStart);
+                _manualEndUntil = nextStart;
+                _waterRepository.SetManualEndUntil(_manualEndUntil);
+                _nextReminderAt = _manualEndUntil;
+            }
+        }
+
+        public void ResetManualEnd()
+        {
+            lock (_lock)
+            {
+                _manualEndUntil = null;
+                _waterRepository.SetManualEndUntil(null);
+                _nextReminderAt = null;
+            }
+        }
+
+        private void Tick()
+        {
+            try
+            {
+                EvaluateAndMaybeNotify();
+            }
+            catch
+            {
+                // Swallow to keep timer alive
+            }
+        }
+
+        private void EvaluateAndMaybeNotify()
+        {
+            lock (_lock)
+            {
+                var now = DateTime.Now;
+
+                if (!_enabled || _interval <= TimeSpan.Zero)
+                {
+                    _nextReminderAt = null;
+                    return;
+                }
+
+                if (_manualEndUntil.HasValue)
+                {
+                    if (now < _manualEndUntil.Value)
+                    {
+                        _nextReminderAt = _manualEndUntil;
+                        return;
+                    }
+
+                    _manualEndUntil = null;
+                    _waterRepository.SetManualEndUntil(null);
+                    _nextReminderAt = null;
+                }
+
+                var (dayStart, dayEnd, inWindow) = GetCurrentWaterDayRange(now);
+                if (!inWindow)
+                {
+                    if (now < dayStart)
+                    {
+                        _nextReminderAt = dayStart;
+                    }
+                    else
+                    {
+                        _nextReminderAt = ComputeNextDayStart(now, _dayStart);
+                    }
+                    return;
+                }
+
+                var goal = _waterRepository.GetDailyGoal();
+                if (goal <= 0)
+                {
+                    _nextReminderAt = now.AddMinutes(10);
+                    return;
+                }
+
+                var entries = _waterRepository.GetEntriesInRange(dayStart, dayEnd);
+                var alreadyDrunk = entries.Sum(e => e.AmountMl);
+                var remaining = goal - alreadyDrunk;
+
+                if (remaining <= 0)
+                {
+                    _nextReminderAt = ComputeNextDayStart(now, _dayStart);
+                    return;
+                }
+
+                if (!_nextReminderAt.HasValue)
+                {
+                    _nextReminderAt = now;
+                }
+
+                if (now < _nextReminderAt.Value)
+                {
+                    return;
+                }
+
+                var remainingMinutes = Math.Max(1, (int)(dayEnd - now).TotalMinutes);
+                var intervalMinutes = Math.Max(1, (int)_interval.TotalMinutes);
+                var remindersLeft = Math.Max(1, (int)Math.Ceiling(remainingMinutes / (double)intervalMinutes));
+
+                var rawAmount = (int)Math.Ceiling((double)remaining / remindersLeft);
+                var amount = RoundUpToStep(rawAmount, 50);
+                if (amount > remaining) amount = remaining;
+                if (amount <= 0)
+                {
+                    _nextReminderAt = now.AddMinutes(intervalMinutes);
+                    return;
+                }
+
+                var remainingAfter = Math.Max(0, remaining - amount);
+
+                _notificationService.ShowWaterReminder(
+                    amount,
+                    remainingAfter,
+                    goal,
+                    () => ConfirmDrink(amount),
+                    () => SkipUntilNext(intervalMinutes));
+
+                _nextReminderAt = now.Add(_interval);
+            }
+        }
+
+        private void ConfirmDrink(int amount)
+        {
+            lock (_lock)
+            {
+                _waterRepository.AddEntry(amount, DateTime.Now);
+                _nextReminderAt = DateTime.Now.Add(_interval);
+            }
+        }
+
+        private void SkipUntilNext(int intervalMinutes)
+        {
+            lock (_lock)
+            {
+                _nextReminderAt = DateTime.Now.AddMinutes(intervalMinutes);
+            }
         }
 
         private DateTime ComputeNextDayStart(DateTime now, TimeSpan dayStart)
@@ -73,106 +197,12 @@ namespace ReminderApp.Services
             return todayStart.AddDays(1);
         }
 
-        private void TimerOnTick(object? sender, EventArgs e)
-        {
-            if (!_enabled || _interval <= TimeSpan.Zero)
-                return;
-
-            var now = DateTime.Now;
-
-            // Eğer "bugünlük suyu bitir" aktifse ve halen süresini doldurmadıysa, hiçbir şey yapma.
-            if (_manualEndUntil.HasValue)
-            {
-                if (now < _manualEndUntil.Value)
-                    return;
-
-                // Süre doldu, ertesi gün başladı → tekrar normal çalışmaya dönebiliriz.
-                _manualEndUntil = null;
-                _waterRepository.SetManualEndUntil(null);
-            }
-
-            var (dayStart, dayEnd, inWindow) = GetCurrentWaterDayRange(now);
-
-            if (!inWindow)
-            {
-                // Gün penceresi dışındaysak su hatırlatması yapmıyoruz.
-                // Eğer pencere henüz başlamadıysa first trigger'ı pencere başlangıcının sonrasına koyabiliriz.
-                if (now < dayStart)
-                {
-                    _nextTriggerTime = dayStart.Add(_interval);
-                }
-                else
-                {
-                    _nextTriggerTime = DateTime.MaxValue;
-                }
-                return;
-            }
-
-            // Pencerenin içindeyiz.
-            if (_nextTriggerTime == DateTime.MaxValue || _nextTriggerTime < now || _nextTriggerTime >= dayEnd)
-            {
-                _nextTriggerTime = now.Add(_interval);
-            }
-
-            if (now >= _nextTriggerTime && now < dayEnd)
-            {
-                TriggerWaterReminder(now, dayStart, dayEnd);
-                _nextTriggerTime = now.Add(_interval);
-            }
-        }
-
-        /// <summary>
-        /// dayStart / dayEnd: bu su gününün gerçek zaman aralığı
-        /// </summary>
-        private void TriggerWaterReminder(DateTime now, DateTime dayStart, DateTime dayEnd)
-        {
-            var goal = _waterRepository.GetDailyGoal();
-            if (goal <= 0) return;
-
-            // Bu su gününde (dayStart–dayEnd) içilen toplam
-            var entries = _waterRepository.GetEntriesInRange(dayStart, dayEnd);
-            var alreadyDrunk = entries.Sum(e => e.AmountMl);
-            var remaining = goal - alreadyDrunk;
-
-            if (remaining <= 0)
-            {
-                // Hedefe ulaşılmış, artık hatırlatma yapma
-                return;
-            }
-
-            var remainingMinutes = (int)(dayEnd - now).TotalMinutes;
-            if (remainingMinutes <= 0)
-                return;
-
-            var intervalMinutes = (int)_interval.TotalMinutes;
-            if (intervalMinutes <= 0) intervalMinutes = 60;
-
-            int remainingReminders = Math.Max(1, remainingMinutes / intervalMinutes);
-
-            var rawAmount = (int)Math.Ceiling((double)remaining / remainingReminders);
-
-            // 100 ml adımına yukarı yuvarla
-            int amount = RoundUpToStep(rawAmount, 100);
-            if (amount > remaining) amount = remaining;
-            if (amount <= 0) return;
-
-            _notificationService.ShowWaterReminder(amount, () =>
-            {
-                _waterRepository.AddEntry(amount, DateTime.Now);
-            });
-        }
-
         private int RoundUpToStep(int value, int step)
         {
             if (value <= 0) return 0;
             return ((value + step - 1) / step) * step;
         }
 
-        /// <summary>
-        /// Şu anki zamana göre su gününün start/end aralığını ve
-        /// şu an bu pencerenin içinde miyiz bilgisini döndürür.
-        /// Cross-midnight (örn. 09:00–02:00) durumları da destekler.
-        /// </summary>
         private (DateTime start, DateTime end, bool inWindow) GetCurrentWaterDayRange(DateTime now)
         {
             var today = now.Date;
@@ -193,18 +223,12 @@ namespace ReminderApp.Services
                     return (start, end, true);
                 }
 
-                // Gün penceresi bitti, bir sonraki gün
                 var nextStart = today.AddDays(1) + _dayStart;
                 var nextEnd = today.AddDays(1) + _dayEnd;
                 return (nextStart, nextEnd, false);
             }
             else
             {
-                // Örn: 09:00–02:00
-                // İki pencere olabilir:
-                // 1) Dün 09:00 → Bugün 02:00
-                // 2) Bugün 09:00 → Yarın 02:00
-
                 var todayStart = today + _dayStart;
                 var todayEndNext = today.AddDays(1) + _dayEnd;
 
@@ -221,7 +245,6 @@ namespace ReminderApp.Services
                     return (todayStart, todayEndNext, true);
                 }
 
-                // Pencere dışında: sıradaki pencereyi tahmin et
                 if (now < todayStart)
                 {
                     return (todayStart, todayEndNext, false);

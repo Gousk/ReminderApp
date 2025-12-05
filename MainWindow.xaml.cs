@@ -404,6 +404,12 @@ namespace ReminderApp
             StatusText.Text = $"Today's water reminders ended. They will resume next day at {WaterDayStartBox.Text}.";
         }
 
+        private void ResetWaterDay_Click(object sender, RoutedEventArgs e)
+        {
+            _waterReminderService.ResetManualEnd();
+            StatusText.Text = "Water reminders resumed for the current day.";
+        }
+
         private void AddWaterAmount(int amount)
         {
             if (amount <= 0) return;
@@ -565,14 +571,16 @@ namespace ReminderApp
         private void TestWaterNotification_Click(object sender, RoutedEventArgs e)
         {
             const int testAmountMl = 250;
+            var goal = _waterRepository.GetDailyGoal();
+            var remaining = Math.Max(0, goal - testAmountMl);
 
-            _notificationService.ShowWaterReminder(testAmountMl, () =>
+            _notificationService.ShowWaterReminder(testAmountMl, remaining, goal, () =>
             {
                 // Testte loglama istemiyorsan boş bırak.
                 // Eğer testte bile su loglansın istersen:
                 // _waterRepository.AddEntry(testAmountMl, DateTime.Now);
                 // UpdateWaterUIForSelectedDate();
-            });
+            }, null);
 
             StatusText.Text = "Test water notification sent.";
         }
