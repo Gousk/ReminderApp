@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using System.Timers;
+using System.Windows.Threading;
 using ReminderApp.Models;
 
 namespace ReminderApp.Services
@@ -9,7 +9,7 @@ namespace ReminderApp.Services
     {
         private readonly WaterRepository _waterRepository;
         private readonly NotificationService _notificationService;
-        private readonly Timer _timer;
+        private readonly DispatcherTimer _timer;
         private readonly object _lock = new();
 
         private bool _enabled;
@@ -27,14 +27,8 @@ namespace ReminderApp.Services
 
             _manualEndUntil = _waterRepository.GetManualEndUntil();
 
-            _timer = new Timer
-            {
-                Interval = 1000,
-                AutoReset = false,
-                Enabled = false
-            };
-
-            _timer.Elapsed += TimerOnTick;
+            _timer = new DispatcherTimer();
+            _timer.Tick += TimerOnTick;
             ScheduleNext(TimeSpan.Zero);
         }
 
@@ -85,8 +79,8 @@ namespace ReminderApp.Services
         {
             lock (_lock)
             {
-                // Timer tekrar tekrar AutoReset ile çalışmıyor; her callback sonunda yeniden ayarlıyoruz.
-                _timer.Enabled = false;
+                // DispatcherTimer manual restart: her tick'te durdurup yeniden programlıyoruz.
+                _timer.Stop();
 
                 var now = DateTime.Now;
 
@@ -205,8 +199,9 @@ namespace ReminderApp.Services
 
         private void ScheduleNext(TimeSpan delay)
         {
-            _timer.Interval = Math.Max(1, ClampDelay(delay).TotalMilliseconds);
-            _timer.Enabled = true;
+            var nextDelay = ClampDelay(delay);
+            _timer.Interval = nextDelay;
+            _timer.Start();
         }
 
         private TimeSpan ClampDelay(TimeSpan delay)
