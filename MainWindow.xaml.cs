@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Drawing;
+using System.Windows.Threading;
 using ReminderApp.Models;
 using ReminderApp.Services;
 using ReminderApp.UI;
@@ -19,6 +20,7 @@ namespace ReminderApp
         private readonly ReminderScheduler _scheduler;
         private readonly WaterRepository _waterRepository;
         private readonly WaterReminderService _waterReminderService;
+        private readonly DispatcherTimer _debugTimer;
         private bool _waterSettingsInitialized = false;
 
         // System tray (nullable yaptık, sonra null-check ile kullanacağız)
@@ -37,6 +39,11 @@ namespace ReminderApp
 
             _waterRepository = new WaterRepository();
             _waterReminderService = new WaterReminderService(_waterRepository, _notificationService);
+            _debugTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _debugTimer.Tick += (_, _) => UpdateWaterDebugPanel();
 
             CalendarControl.SelectedDate = DateTime.Today;
             UpdateForSelectedDate();
@@ -74,6 +81,9 @@ namespace ReminderApp
 
             // --- Notification settings UI'ı doldur ---
             LoadNotificationSettingsIntoUI();
+
+            UpdateWaterDebugPanel();
+            _debugTimer.Start();
 
             StatusText.Text = "Scheduler running. Use the tabs for reminders, water tracking, and notification settings.";
 
@@ -186,6 +196,8 @@ namespace ReminderApp
                 _trayIcon = null;
             }
 
+            _debugTimer.Stop();
+
             base.OnClosing(e);
         }
 
@@ -289,6 +301,40 @@ namespace ReminderApp
 
             WaterSummaryText.Text =
                 $"Date: {date:d} | Total: {total} ml / Goal: {goal} ml ({percent}%)";
+
+            UpdateWaterDebugPanel();
+        }
+
+        private void UpdateWaterDebugPanel()
+        {
+            var info = _waterReminderService.GetDebugInfo();
+
+            WaterDebugStatus.Text = $"Status: {info.Status}";
+            WaterDebugActive.Text =
+                $"Enabled: {info.Enabled} | In window: {info.InWindow} | Manual end: {(info.ManualEndUntil.HasValue ? info.ManualEndUntil.Value.ToString("g") : "none")}";
+            WaterDebugSettings.Text =
+                $"Interval: {info.Interval.TotalMinutes:F0} min | Day window: {info.DayStart:hh\\:mm}–{info.DayEnd:hh\\:mm}";
+            WaterDebugWindow.Text =
+                $"Current window span: {info.WindowStart:MM-dd HH:mm} – {info.WindowEnd:MM-dd HH:mm}";
+            WaterDebugManual.Text =
+                $"Manual end until: {(info.ManualEndUntil.HasValue ? info.ManualEndUntil.Value.ToString("MM-dd HH:mm") : "not set")}";
+            WaterDebugGoal.Text =
+                $"Goal: {info.DailyGoal} ml | Logged: {info.TotalToday} ml";
+            WaterDebugRemaining.Text =
+                $"Remaining: {info.Remaining} ml | Last suggested: {(info.LastSuggestedAmount.HasValue ? $"{info.LastSuggestedAmount.Value} ml" : "n/a")}";
+
+            if (info.NextReminderAt.HasValue)
+            {
+                WaterDebugNext.Text = $"Next reminder at: {info.NextReminderAt.Value:HH:mm:ss}";
+                var countdown = info.Countdown ?? TimeSpan.Zero;
+                if (countdown < TimeSpan.Zero) countdown = TimeSpan.Zero;
+                WaterDebugCountdown.Text = $"Countdown: {countdown:hh\\:mm\\:ss}";
+            }
+            else
+            {
+                WaterDebugNext.Text = "Next reminder at: n/a";
+                WaterDebugCountdown.Text = "Countdown: n/a";
+            }
         }
 
         private void WaterReminderSettingChanged(object sender, RoutedEventArgs e)
@@ -335,6 +381,8 @@ namespace ReminderApp
 
             StatusText.Text =
                 $"Water reminders {(enabled ? "enabled" : "disabled")}, interval {intervalMinutes} minutes.";
+
+            UpdateWaterDebugPanel();
         }
 
         private void SaveWaterSettings_Click(object sender, RoutedEventArgs e)
@@ -396,18 +444,22 @@ namespace ReminderApp
             UpdateWaterUIForSelectedDate();
             StatusText.Text =
                 $"Water settings saved. Goal: {goal} ml, reminders every {intervalMinutes} minutes, window {startTime:hh\\:mm}–{endTime:hh\\:mm}.";
+
+            UpdateWaterDebugPanel();
         }
 
         private void EndWaterDay_Click(object sender, RoutedEventArgs e)
         {
             _waterReminderService.EndToday();
             StatusText.Text = $"Today's water reminders ended. They will resume next day at {WaterDayStartBox.Text}.";
+            UpdateWaterDebugPanel();
         }
 
         private void ResetWaterDay_Click(object sender, RoutedEventArgs e)
         {
             _waterReminderService.ResetManualEnd();
             StatusText.Text = "Water reminders resumed for the current day.";
+            UpdateWaterDebugPanel();
         }
 
         private void AddWaterAmount(int amount)

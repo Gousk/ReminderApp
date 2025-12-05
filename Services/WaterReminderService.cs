@@ -13,6 +13,9 @@ namespace ReminderApp.Services
         private readonly object _lock = new();
         private readonly DispatcherTimer _tickTimer;
 
+        private string _lastStatus = "Waiting for settings...";
+        private int? _lastSuggestedAmount;
+
         private bool _enabled;
         private TimeSpan _interval;
         private TimeSpan _dayStart;
@@ -89,6 +92,7 @@ namespace ReminderApp.Services
                 if (!_enabled || _interval <= TimeSpan.Zero)
                 {
                     _nextReminderAt = null;
+                    _lastStatus = "Disabled or missing interval.";
                     return;
                 }
 
@@ -97,12 +101,14 @@ namespace ReminderApp.Services
                     if (now < _manualEndUntil.Value)
                     {
                         _nextReminderAt = _manualEndUntil;
+                        _lastStatus = $"Manually ended until {_manualEndUntil:HH:mm}.";
                         return;
                     }
 
                     _manualEndUntil = null;
                     _waterRepository.SetManualEndUntil(null);
                     _nextReminderAt = null;
+                    _lastStatus = "Manual end expired; resuming.";
                 }
 
                 var (dayStart, dayEnd, inWindow) = GetCurrentWaterDayRange(now);
@@ -111,10 +117,12 @@ namespace ReminderApp.Services
                     if (now < dayStart)
                     {
                         _nextReminderAt = dayStart;
+                        _lastStatus = $"Waiting for window start at {dayStart:HH:mm}.";
                     }
                     else
                     {
                         _nextReminderAt = ComputeNextDayStart(now, _dayStart);
+                        _lastStatus = $"Window closed; next day start {_nextReminderAt:HH:mm}.";
                     }
                     return;
                 }
@@ -123,6 +131,7 @@ namespace ReminderApp.Services
                 if (goal <= 0)
                 {
                     _nextReminderAt = now.AddMinutes(10);
+                    _lastStatus = "No daily goal set.";
                     return;
                 }
 
@@ -133,16 +142,19 @@ namespace ReminderApp.Services
                 if (remaining <= 0)
                 {
                     _nextReminderAt = ComputeNextDayStart(now, _dayStart);
+                    _lastStatus = "Goal reached; waiting for next day.";
                     return;
                 }
 
                 if (!_nextReminderAt.HasValue)
                 {
                     _nextReminderAt = now;
+                    _lastStatus = "Scheduling first reminder now.";
                 }
 
                 if (now < _nextReminderAt.Value)
                 {
+                    _lastStatus = $"Waiting until {_nextReminderAt:HH:mm}.";
                     return;
                 }
 
@@ -156,11 +168,13 @@ namespace ReminderApp.Services
                 if (amount <= 0)
                 {
                     _nextReminderAt = now.AddMinutes(intervalMinutes);
+                    _lastStatus = "Computed amount <= 0; pushing next check.";
                     return;
                 }
 
                 var remainingAfter = Math.Max(0, remaining - amount);
 
+                _lastSuggestedAmount = amount;
                 _notificationService.ShowWaterReminder(
                     amount,
                     remainingAfter,
@@ -169,6 +183,7 @@ namespace ReminderApp.Services
                     () => SkipUntilNext(intervalMinutes));
 
                 _nextReminderAt = now.Add(_interval);
+                _lastStatus = $"Notified {amount} ml; next at {_nextReminderAt:HH:mm}.";
             }
         }
 
@@ -178,6 +193,7 @@ namespace ReminderApp.Services
             {
                 _waterRepository.AddEntry(amount, DateTime.Now);
                 _nextReminderAt = DateTime.Now.Add(_interval);
+                _lastStatus = $"Logged {amount} ml; next at {_nextReminderAt:HH:mm}.";
             }
         }
 
@@ -186,6 +202,7 @@ namespace ReminderApp.Services
             lock (_lock)
             {
                 _nextReminderAt = DateTime.Now.AddMinutes(intervalMinutes);
+                _lastStatus = $"Skipped; next at {_nextReminderAt:HH:mm}.";
             }
         }
 
@@ -257,5 +274,66 @@ namespace ReminderApp.Services
                 }
             }
         }
+
+        public WaterDebugInfo GetDebugInfo()
+        {
+            lock (_lock)
+            {
+                var now = DateTime.Now;
+                var (windowStart, windowEnd, inWindow) = GetCurrentWaterDayRange(now);
+                var goal = _waterRepository.GetDailyGoal();
+
+                var entries = _waterRepository.GetEntriesInRange(windowStart, windowEnd);
+                var total = entries.Sum(e => e.AmountMl);
+                var remaining = Math.Max(0, goal - total);
+
+                TimeSpan? countdown = null;
+                if (_nextReminderAt.HasValue)
+                {
+                    var span = _nextReminderAt.Value - now;
+                    countdown = span < TimeSpan.Zero ? TimeSpan.Zero : span;
+                }
+
+                return new WaterDebugInfo
+                {
+                    Enabled = _enabled,
+                    Interval = _interval,
+                    DayStart = _dayStart,
+                    DayEnd = _dayEnd,
+                    ManualEndUntil = _manualEndUntil,
+                    NextReminderAt = _nextReminderAt,
+                    WindowStart = windowStart,
+                    WindowEnd = windowEnd,
+                    InWindow = inWindow,
+                    DailyGoal = goal,
+                    TotalToday = total,
+                    Remaining = remaining,
+                    Countdown = countdown,
+                    Status = _lastStatus,
+                    LastSuggestedAmount = _lastSuggestedAmount,
+                    Now = now
+                };
+            }
+        }
+    }
+
+    public class WaterDebugInfo
+    {
+        public bool Enabled { get; init; }
+        public TimeSpan Interval { get; init; }
+        public TimeSpan DayStart { get; init; }
+        public TimeSpan DayEnd { get; init; }
+        public DateTime? ManualEndUntil { get; init; }
+        public DateTime? NextReminderAt { get; init; }
+        public DateTime WindowStart { get; init; }
+        public DateTime WindowEnd { get; init; }
+        public bool InWindow { get; init; }
+        public int DailyGoal { get; init; }
+        public int TotalToday { get; init; }
+        public int Remaining { get; init; }
+        public TimeSpan? Countdown { get; init; }
+        public string Status { get; init; } = string.Empty;
+        public int? LastSuggestedAmount { get; init; }
+        public DateTime Now { get; init; }
     }
 }

@@ -375,6 +375,40 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+
+            <!-- DEBUG TAB -->
+            <TabItem Header="Debug">
+                <ScrollViewer Margin="0,4,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Water Reminder Debug"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,8" />
+
+                        <StackPanel>
+                            <TextBlock x:Name="WaterDebugStatus"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6" />
+                            <TextBlock x:Name="WaterDebugActive"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugSettings"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugWindow"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugManual"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugGoal"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugRemaining"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugNext"
+                                       Margin="0,0,0,4" />
+                            <TextBlock x:Name="WaterDebugCountdown"
+                                       Margin="0,0,0,4" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
 
         <!-- Alt satır: status -->
