@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Windows.Threading;
 using ReminderApp.Models;
 
 namespace ReminderApp.Services
@@ -12,21 +11,27 @@ namespace ReminderApp.Services
         private readonly NotificationService _notificationService;
 
         private readonly object _lock = new();
-        private CancellationTokenSource _cts = new();
-        private Task _runner = Task.CompletedTask;
+        private readonly DispatcherTimer _tickTimer;
 
         private bool _enabled;
         private TimeSpan _interval;
         private TimeSpan _dayStart;
         private TimeSpan _dayEnd;
         private DateTime? _manualEndUntil;
+        private DateTime? _nextReminderAt;
 
         public WaterReminderService(WaterRepository waterRepository, NotificationService notificationService)
         {
             _waterRepository = waterRepository;
             _notificationService = notificationService;
             _manualEndUntil = _waterRepository.GetManualEndUntil();
-            StartLoop();
+
+            _tickTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromSeconds(30)
+            };
+            _tickTimer.Tick += (_, _) => Tick();
+            _tickTimer.Start();
         }
 
         public void ApplySettings(bool enabled, TimeSpan interval, TimeSpan dayStart, TimeSpan dayEnd)
@@ -37,9 +42,8 @@ namespace ReminderApp.Services
                 _interval = interval <= TimeSpan.Zero ? TimeSpan.FromMinutes(60) : interval;
                 _dayStart = dayStart;
                 _dayEnd = dayEnd;
+                _nextReminderAt = null;
             }
-
-            RestartLoop();
         }
 
         public void EndToday()
@@ -50,9 +54,8 @@ namespace ReminderApp.Services
                 var nextStart = ComputeNextDayStart(now, _dayStart);
                 _manualEndUntil = nextStart;
                 _waterRepository.SetManualEndUntil(_manualEndUntil);
+                _nextReminderAt = _manualEndUntil;
             }
-
-            RestartLoop();
         }
 
         public void ResetManualEnd()
@@ -61,62 +64,23 @@ namespace ReminderApp.Services
             {
                 _manualEndUntil = null;
                 _waterRepository.SetManualEndUntil(null);
+                _nextReminderAt = null;
             }
-
-            RestartLoop();
         }
 
-        private void RestartLoop()
+        private void Tick()
         {
-            lock (_lock)
+            try
             {
-                _cts.Cancel();
-                _cts.Dispose();
-                _cts = new CancellationTokenSource();
-                StartLoopInternal();
+                EvaluateAndMaybeNotify();
             }
-        }
-
-        private void StartLoop()
-        {
-            lock (_lock)
+            catch
             {
-                StartLoopInternal();
+                // Swallow to keep timer alive
             }
         }
 
-        private void StartLoopInternal()
-        {
-            var token = _cts.Token;
-            _runner = Task.Run(async () => await RunAsync(token), token);
-        }
-
-        private async Task RunAsync(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                TimeSpan delay;
-                try
-                {
-                    delay = EvaluateAndMaybeNotify();
-                }
-                catch
-                {
-                    delay = TimeSpan.FromMinutes(5);
-                }
-
-                try
-                {
-                    await Task.Delay(delay, token);
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-            }
-        }
-
-        private TimeSpan EvaluateAndMaybeNotify()
+        private void EvaluateAndMaybeNotify()
         {
             lock (_lock)
             {
@@ -124,18 +88,21 @@ namespace ReminderApp.Services
 
                 if (!_enabled || _interval <= TimeSpan.Zero)
                 {
-                    return TimeSpan.FromMinutes(5);
+                    _nextReminderAt = null;
+                    return;
                 }
 
                 if (_manualEndUntil.HasValue)
                 {
                     if (now < _manualEndUntil.Value)
                     {
-                        return ClampDelay(_manualEndUntil.Value - now);
+                        _nextReminderAt = _manualEndUntil;
+                        return;
                     }
 
                     _manualEndUntil = null;
                     _waterRepository.SetManualEndUntil(null);
+                    _nextReminderAt = null;
                 }
 
                 var (dayStart, dayEnd, inWindow) = GetCurrentWaterDayRange(now);
@@ -143,17 +110,20 @@ namespace ReminderApp.Services
                 {
                     if (now < dayStart)
                     {
-                        return ClampDelay(dayStart - now);
+                        _nextReminderAt = dayStart;
                     }
-
-                    var nextStart = ComputeNextDayStart(now, _dayStart);
-                    return ClampDelay(nextStart - now);
+                    else
+                    {
+                        _nextReminderAt = ComputeNextDayStart(now, _dayStart);
+                    }
+                    return;
                 }
 
                 var goal = _waterRepository.GetDailyGoal();
                 if (goal <= 0)
                 {
-                    return TimeSpan.FromMinutes(10);
+                    _nextReminderAt = now.AddMinutes(10);
+                    return;
                 }
 
                 var entries = _waterRepository.GetEntriesInRange(dayStart, dayEnd);
@@ -162,8 +132,18 @@ namespace ReminderApp.Services
 
                 if (remaining <= 0)
                 {
-                    var nextStart = ComputeNextDayStart(now, _dayStart);
-                    return ClampDelay(nextStart - now);
+                    _nextReminderAt = ComputeNextDayStart(now, _dayStart);
+                    return;
+                }
+
+                if (!_nextReminderAt.HasValue)
+                {
+                    _nextReminderAt = now;
+                }
+
+                if (now < _nextReminderAt.Value)
+                {
+                    return;
                 }
 
                 var remainingMinutes = Math.Max(1, (int)(dayEnd - now).TotalMinutes);
@@ -175,7 +155,8 @@ namespace ReminderApp.Services
                 if (amount > remaining) amount = remaining;
                 if (amount <= 0)
                 {
-                    return TimeSpan.FromMinutes(intervalMinutes);
+                    _nextReminderAt = now.AddMinutes(intervalMinutes);
+                    return;
                 }
 
                 var remainingAfter = Math.Max(0, remaining - amount);
@@ -184,10 +165,27 @@ namespace ReminderApp.Services
                     amount,
                     remainingAfter,
                     goal,
-                    () => _waterRepository.AddEntry(amount, DateTime.Now),
-                    null);
+                    () => ConfirmDrink(amount),
+                    () => SkipUntilNext(intervalMinutes));
 
-                return TimeSpan.FromMinutes(intervalMinutes);
+                _nextReminderAt = now.Add(_interval);
+            }
+        }
+
+        private void ConfirmDrink(int amount)
+        {
+            lock (_lock)
+            {
+                _waterRepository.AddEntry(amount, DateTime.Now);
+                _nextReminderAt = DateTime.Now.Add(_interval);
+            }
+        }
+
+        private void SkipUntilNext(int intervalMinutes)
+        {
+            lock (_lock)
+            {
+                _nextReminderAt = DateTime.Now.AddMinutes(intervalMinutes);
             }
         }
 
@@ -203,17 +201,6 @@ namespace ReminderApp.Services
         {
             if (value <= 0) return 0;
             return ((value + step - 1) / step) * step;
-        }
-
-        private TimeSpan ClampDelay(TimeSpan delay)
-        {
-            if (delay < TimeSpan.FromSeconds(15))
-                return TimeSpan.FromSeconds(15);
-
-            if (delay > TimeSpan.FromHours(6))
-                return TimeSpan.FromHours(6);
-
-            return delay;
         }
 
         private (DateTime start, DateTime end, bool inWindow) GetCurrentWaterDayRange(DateTime now)
